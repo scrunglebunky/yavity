@@ -1,7 +1,8 @@
-# Yavity
+# UNFINISHED GAMES ARCHIVE: YAVITY
 - A Pygame game I made when I was bored at work.
 - Planets are spawned, that a player can hop to (zero gravity) and rotate around the perimeter of, and enemies that kamikazee at the planets to destroy them
 - I never finished this because I got a new job and new things to do.
+- The documentation is very simple; I didn't bother to do extensive docs because I didn't think I'd finish the game. I was right.
 
 ## What Was Planned
 - A DefendPlanet: one that rolls through colors that indicates you have to defend it. If it gets destroyed, it's Game Over.

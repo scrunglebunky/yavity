@@ -1,3 +1,5 @@
+# Andrew Church - 2025
+
 import pygame, sys, math, random
 
 pygame.font.init()
