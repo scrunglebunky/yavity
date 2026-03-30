@@ -32,27 +32,36 @@ class Sprite(pygame.sprite.Sprite):
         self.health -= 1
         if self.health <= 0:
             self.kill()
+            
     def wrap(self):
         # wrapping around
-        while self.pos[0] > playfield_rect.right:
-            self.pos[0] -= playfield_rect.right
-        while self.pos[0] < playfield_rect.left:
-            self.pos[0] += playfield_rect.right
-        while self.pos[1] > playfield_rect.bottom:
-            self.pos[1] -= playfield_rect.bottom
-        while self.pos[1] < playfield_rect.top:
-            self.pos[1] += playfield_rect.bottom
+        while self.rect.left > playfield_rect.right:
+            self.pos[0] -= playfield_rect.right - self.rect.width
+            self.rect.center = self.pos
+        while self.rect.right < playfield_rect.left:
+            self.pos[0] += playfield_rect.right + self.rect.width
+            self.rect.center = self.pos
+        while self.rect.top > playfield_rect.bottom:
+            self.pos[1] -= playfield_rect.bottom - self.rect.height
+            self.rect.center = self.pos
+        while self.rect.bottom < playfield_rect.top:
+            self.pos[1] += playfield_rect.bottom + self.rect.height
+            self.rect.center = self.pos
 
 
 # planet item
 class Planet(Sprite):
-    def __init__(self,radius=10,pos=[0,0],health=10):
+    def __init__(self,pos=[0,0],health=10):
+        # print('planet created @',pos,health)
+        self.health = health
+        self.radius = 15 + self.health*2
         # creates a Planet object with the given arguments
-        Sprite.__init__(self,health=health)
-        self.image = pygame.Surface((radius*2,radius*2),pygame.SRCALPHA)
+        Sprite.__init__(self,health=health,mytype="planet")
+        self.image = pygame.Surface((self.radius*2,self.radius*2),pygame.SRCALPHA)
         self.rect = self.image.get_rect()
         self.pos = self.rect.center = pos
-        self.radius = self.health * 2
+        
+        
         # drawing circle
         self.color = (random.randint(0,255),random.randint(0,255),random.randint(0,255))
         self.update_surf()
@@ -60,6 +69,7 @@ class Planet(Sprite):
         # various info
         self.spd = 0.005 # momentum gain
         self.friction = 0.7 # momentum loss, slipperiness
+
     
     def update_surf(self):
         self.image.fill((0,0,0,0))
@@ -73,8 +83,8 @@ class Planet(Sprite):
 
 # moving planet bc im silly
 class MovingPlanet(Planet):
-    def __init__(self,radius=10,pos=[0,0],health=10,move_vals=[0,0]):
-        Planet.__init__(self,radius,pos,health)
+    def __init__(self,pos=[0,0],health=10,move_vals=[0,0]):
+        Planet.__init__(self,pos,health)
         self.ogpos=self.pos[:]
         self.move_vals = move_vals
     def update(self):
@@ -86,8 +96,8 @@ class MovingPlanet(Planet):
 
 # defendable planet
 class DefendPlanet(Planet):
-    def __init__(self,radius=10,pos=[0,0],health=10,move_vals=[0,0]):
-        Planet.__init__(self,radius,pos,health)
+    def __init__(self,pos=[0,0],health=10,move_vals=[0,0]):
+        Planet.__init__(self,pos,health)
         self.color = [0,0,0]
     def update(self):
         for i in range(len(self.color)):
@@ -315,18 +325,71 @@ class Enemy(Sprite):
 
 
 
-# generating a level of planets
-for i in range(random.randint(5,10)):
-    health = random.randint(20,60)
-    pos = [random.uniform(health*1.2,playfield_rect.width-health*1.2),random.uniform(health*1.2,playfield_rect.height-health*1.2)]
-    planets.add(
-        random.choice([Planet,MovingPlanet,DefendPlanet])(health,pos,health=health//2)
-            )
+# Game item
+
+class Game():
+    def __init__(self):
+        # generates basic information for the game
+        # the score, the current running round, things that are stored beyond just a single round
+        # but then information about the player, enemies, planets, etc. are stored in the Round()
+        self.score = 0
+        self.playerhealth = 3
+        self.level = 0
+        self.started = False
+    def update(self):
+        ...
+    
+class Round():
+    def __init__(self,level=0):
+        self.level = 0 
+        self.planets = self.generate_planets()
+        self.player = Player(self.planets[0])
+        self.defend = self.planets[0]
+        for planet in self.planets:
+            planets.add(planet)
+            print(planet.pos)
+        players.add(self.player)
+    
+    def generate_planets(self) -> list:
+        planets = []
+        # planets should NOT collide with one another
+        # because of this, the game creates a list of potential groups of coordinates to place the planet at
+        # then once a planet is placed, it takes a chunk out of those potential groups
+        # the Defendable always is placed in the dead center of the map.
+        available_space = [
+            [[0,playfield_rect.width]], # x coordinates
+            [[0,playfield_rect.height]] # y coordinates
+            ]
+        
+        # spawning defendable
+        planets.append(DefendPlanet(health=20,pos=playfield_rect.center))
+    
+        # spawning 5 actual planets
+        for i in range(5):
+            pickhealth = random.randint(0,10)
+            pickindex = random.randint(0,len(available_space[0])-1) # picking a chunk from the available chunks.
+            pickspot = [random.randint(available_space[0][pickindex][0],available_space[0][pickindex][1]),random.randint(available_space[1][pickindex][0],available_space[1][pickindex][1])]
+            pick = Planet(health=pickhealth,pos=pickspot)
+            planets.append(pick)
+        
+        return planets
+    
+    def generate_enemies(self):
+        # the enemy spawnlist acts a lot like old YUP, where specific enemies show up at specific times.
+        # there are some pre-generated level files but after a few rounds the game begins to generate its own.
+        ...
 
 
-# generating player
-player = Player(planet=random.choice(planets.sprites()),theta=0)
-players.add(player)
+
+cur_round = Round()
+
+
+        
+
+
+
+
+
 
 while run:
     # sprite update
@@ -350,14 +413,13 @@ while run:
             for j in v: #iterating through each planet collision
                 k.on_collide(j)
                 j.on_collide(k)
-            
 
 
     # updating display
     pygame.display.update()
     # event checking
     for event in pygame.event.get():
-        player.event_handler(event)
+        cur_round.player.event_handler(event)
 
         match event.type:
             case pygame.QUIT:
@@ -370,7 +432,7 @@ while run:
     # ticking clock
     clock.tick(fps)
     
+exit()
+    
         
             
-        
-        
